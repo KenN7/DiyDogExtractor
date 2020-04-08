@@ -2,14 +2,15 @@ import argparse
 import re
 from operator import itemgetter
 from itertools import groupby
+import json
 import os
 import fitz
 
 #define regexes
-re_mash = re.compile(r"(\d+\.{0,1}\d*)°(?:C|F)\s(\d+\.{0,1}\d*)°(?:C|F)(\s(\d+mins)|)")
+re_mash = re.compile(r"(\d+\.?\d*) ?°(?:C|F)\s(\d+\.?\d*) ?°(?:C|F)(\s(\d+mins)|)")
 re_vol = re.compile(r"(?<!BOIL\s)VOLUME\s(\d+\.{0,1}\d*L)\s(\d+\.{0,1}\d*(gal|))")
 re_boilvol = re.compile(r"BOIL\sVOLUME\s(\d+\.{0,1}\d*L)\s(\d+\.{0,1}\d*(gal|))")
-re_realabvog = re.compile(r"(\d+\.{0,1}\d*%{0,1}) (.+?)\s([0-9]*\.{0,1}[0-9]*)")
+re_realabvog = re.compile(r"(\d+\.?\d*%?) +(\d+.?)\s([0-9]*\.?[0-9]*)")
 re_number = re.compile(r"#([0-9]+)")
 re_date = re.compile(r"FIRST BREWED\s(\w*\s*\d+)")
 
@@ -114,7 +115,9 @@ def generate(args,page):
         sentence_list_blk_2 = blkstr2.split("\n")
         
         if args.debug:
-            print(i,sentence_list_blk)
+            # print(i,sentence_list_blk)
+            print(i,sentence_list_blk_2)
+            # print(blkstr2)
 
         try:
             if i == 0: #header
@@ -149,8 +152,12 @@ def generate(args,page):
                     beer['real_abv'] = re.search(r"\d+\.{0,1}\d*%",blkstr2).group()
 
             elif i == 1: #top left description
-                if "THIS BEER IS" in sentence_list_blk and "BASICS" in sentence_list_blk:
-                    beer['description'] = " ".join(sentence_list_blk[1:-1])
+                if "THIS BEER IS" in sentence_list_blk_2 and "BASICS" in sentence_list_blk_2:
+                    t1 = sentence_list_blk_2.index("THIS BEER IS")
+                    t2 = sentence_list_blk_2.index("BASICS")
+                    beer['description'] = " ".join(sentence_list_blk_2[t1+1:t2])
+                else:
+                    print(f"No description data: {page.number} id:{beer['id']} ")
 
             elif i == 2: #basics
                 if s:=re_vol.search(blkstr):
@@ -206,14 +213,14 @@ def generate(args,page):
                 if "HOPS" in sentence_list_blk and "MALT" in sentence_list_blk:
                     t1 = sentence_list_blk.index('MALT')
                     t2 = sentence_list_blk.index('HOPS')
-                    beer['malts'] = sentence_list_blk[t1+1:t2]
+                    beer['malts'] = [x.split() for x in sentence_list_blk[t1+1:t2]]
                 else:
                     print(f"No malts data: {page.number} id:{beer['id']} ")
 
                 if "HOPS" in sentence_list_blk and "YEAST" in sentence_list_blk:
                     t1 = sentence_list_blk.index('HOPS')
                     t2 = sentence_list_blk.index('YEAST')
-                    beer['hops'] = sentence_list_blk[t1+2:t2]
+                    beer['hops'] = [x.split() for x in sentence_list_blk[t1+2:t2]]
                 else:
                     print(f"No hops data: {page.number} id:{beer['id']} ")
 
@@ -291,3 +298,5 @@ if __name__ == "__main__":
             page = doc[int(page)]  # we want text from this page
             beers.append(generate(args,page))
         # print(beers)
+        with open('result.json', 'w') as fp:
+            json.dump(beers,fp)
