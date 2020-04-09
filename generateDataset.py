@@ -13,6 +13,8 @@ re_boilvol = re.compile(r"BOIL\sVOLUME\s(\d+\.{0,1}\d*L)\s(\d+\.{0,1}\d*(gal|))"
 re_realabvog = re.compile(r"(\d+\.?\d*%?) +(\d+.?)\s([0-9]*\.?[0-9]*)")
 re_number = re.compile(r"#([0-9]+)")
 re_date = re.compile(r"FIRST BREWED\s(\w*\s*\d+)")
+re_malt = re.compile(r"([\w\W]+?)\s+(\d+\.?\d*)k?g?\s+(\d+\.?\d*)lb")
+re_hops = re.compile(r"([\w\s]*?)\s(\d+\.?\d*)g?\s([\w\s]*?)\s(Bitteri?n?g?|Flavour|Aroma)")
 
 def generate(args,page):
     pagerect = list()
@@ -116,8 +118,8 @@ def generate(args,page):
         
         if args.debug:
             # print(i,sentence_list_blk)
-            print(i,sentence_list_blk_2)
-            # print(blkstr2)
+            print(i,sentence_list_blk)
+            print(blkstr2)
 
         try:
             if i == 0: #header
@@ -213,14 +215,16 @@ def generate(args,page):
                 if "HOPS" in sentence_list_blk and "MALT" in sentence_list_blk:
                     t1 = sentence_list_blk.index('MALT')
                     t2 = sentence_list_blk.index('HOPS')
-                    beer['malts'] = [x.split() for x in sentence_list_blk[t1+1:t2]]
+                    # beer['malts'] = [x.split() for x in sentence_list_blk[t1+1:t2]]
+                    beer['malts'] = re_malt.findall( " ".join(sentence_list_blk[t1+1:t2]) )
                 else:
                     print(f"No malts data: {page.number} id:{beer['id']} ")
 
                 if "HOPS" in sentence_list_blk and "YEAST" in sentence_list_blk:
                     t1 = sentence_list_blk.index('HOPS')
                     t2 = sentence_list_blk.index('YEAST')
-                    beer['hops'] = [x.split() for x in sentence_list_blk[t1+2:t2]]
+                    # beer['hops'] = [x.split() for x in sentence_list_blk[t1+2:t2]]
+                    beer['hops'] = re_hops.findall( " ".join(sentence_list_blk[t1+2:t2]) )
                 else:
                     print(f"No hops data: {page.number} id:{beer['id']} ")
 
